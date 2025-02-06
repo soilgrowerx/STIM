@@ -2,6 +2,11 @@
 
 conversation_history = []  # List to store conversation segments and "stimmed" data
 
+import nltk
+nltk.download('punkt')
+nltk.download('stopwords') # pip install nltk
+
+
 def segment_conversation(user_input, agent_response):
     segment = {
         "user_input": user_input,
@@ -11,20 +16,53 @@ def segment_conversation(user_input, agent_response):
     }
     return segment
 
+from nltk.tokenize import word_tokenize, sent_tokenize
+from nltk.corpus import stopwords
+
 def stim_process_segment(segment):
     text = segment["user_input"] + " " + segment["agent_response"]
 
     # Simplified "repetitive encoding" - just repeat the string a few times
     repeated_encodings = [text] * 3
 
-    # Very basic summarization - just get first few words (for demo only!)
-    summary = text[:20] + "..."
+    # Tokenize the text into sentences
+    sentences = sent_tokenize(text)
+
+    # Tokenize each sentence into words
+    words = [word_tokenize(sentence) for sentence in sentences]
+
+    # Remove stop words
+    stop_words = set(stopwords.words('english'))
+    words = [[word for word in sentence if word.lower() not in stop_words] for sentence in words]
+
+    # Calculate word frequencies
+    word_frequencies = {}
+    for sentence in words:
+        for word in sentence:
+            if word not in word_frequencies:
+                word_frequencies[word] = 0
+            word_frequencies[word] += 1
+
+    # Calculate sentence scores based on word frequencies
+    sentence_scores = {}
+    for i, sentence in enumerate(sentences):
+        for word in word_tokenize(sentence):
+            if word in word_frequencies:
+                if i not in sentence_scores:
+                    sentence_scores[i] = 0
+                sentence_scores[i] += word_frequencies[word]
+
+    # Get the top 3 scoring sentences
+    top_sentences = sorted(sentence_scores, key=sentence_scores.get, reverse=True)[:3]
+
+    # Create the summary
+    summary = ' '.join([sentences[i] for i in sorted(top_sentences)])
 
     stimmed_data = {
         "repeated_encodings": repeated_encodings,
         "summary": summary
     }
-    return stimmed_data
+    return stimmed_data # generate more meaningful summaries using NLTK's summarization capabilities
 
 def store_memory(segment, stimmed_data):
     segment["stimmed_data"] = stimmed_data
